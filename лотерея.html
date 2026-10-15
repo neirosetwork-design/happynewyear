@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Новогодняя лотерея — комплект ведущего</title>
+<style>
+  :root{
+    --bg:#0c1a2c; --bg2:#0f2340; --card:rgba(18,38,68,.94); --line:#27507f;
+    --text:#eaf2ff; --muted:#9fb4d4; --gold:#f6c65b; --green:#41d1a7; --red:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh;
+       color:var(--text);font-family:system-ui,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.5}
+  #snowCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+  #fxCanvas{position:fixed;inset:0;z-index:60;pointer-events:none}
+  header,main,footer{position:relative;z-index:1}
+  header{padding:28px 20px 8px;text-align:center}
+  header h1{margin:0 0 6px;font-size:clamp(22px,4vw,34px)}
+  header p{margin:0;color:var(--muted);font-size:15px}
+  main{max-width:880px;margin:0 auto;padding:16px 16px 8px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:16px 0}
+  .panel h2{margin:0 0 8px;font-size:20px}
+  .panel h3{margin:18px 0 0;font-size:16px}
+  .muted{color:var(--muted);font-size:14px;margin:4px 0}
+  .hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  input[type=number],textarea{background:#0b1c33;border:1px solid var(--line);color:var(--text);
+       border-radius:10px;padding:10px 12px;font:inherit}
+  input[type=number]{width:110px}
+  textarea{width:100%;resize:vertical;min-height:120px}
+  .btn{cursor:pointer;border:0;border-radius:12px;padding:11px 16px;font:inherit;font-weight:600;
+       background:#22406b;color:#eaf2ff;transition:filter .15s ease,transform .06s ease}
+  .btn:hover{filter:brightness(1.15)}
+  .btn:active{transform:scale(.98)}
+  .btn.gold{background:linear-gradient(135deg,#f6c65b,#e0a92f);color:#241a05}
+  .btn.big{font-size:20px;padding:16px 28px}
+  .btn.danger{background:#59262e;color:#ffd6d6}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .drum{display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0 4px}
+  #drumNum{font-size:clamp(56px,14vw,112px);font-weight:800;letter-spacing:2px;min-height:1.15em;
+       color:var(--gold);text-shadow:0 0 24px rgba(246,198,91,.35)}
+  .reveal{text-align:center;font-size:18px;min-height:64px;padding:10px;border-radius:12px;transition:.2s}
+  .reveal.show{background:#12314f;border:1px solid var(--line);animation:pop .35s ease}
+  .reveal .prize{color:var(--green);font-weight:700;font-size:22px}
+  @keyframes pop{from{transform:scale(.92);opacity:.4}to{transform:scale(1);opacity:1}}
+  .grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{width:44px;height:44px;display:grid;place-items:center;border-radius:10px;
+        background:#1b3559;border:1px solid var(--line);font-weight:600}
+  .chip.drawn{background:#3a2430;border-color:#7a3b4a;color:#ff9d9d;text-decoration:line-through}
+  ol#history{margin:8px 0 0;padding-left:22px}
+  ol#history li{margin:6px 0}
+  .okmsg{color:var(--green)} .badmsg{color:var(--red)}
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:8px 16px 40px}
+  #printRoot{display:none}
+  @media print{
+    body{background:#fff;color:#000}
+    header,main,footer,#snowCanvas,#fxCanvas{display:none!important}
+    #printRoot{display:block}
+    #printRoot.mode-tickets{display:grid;grid-template-columns:1fr 1fr;gap:7mm;padding:0;margin:0}
+    #printRoot.mode-rules{display:grid;grid-template-columns:1fr 1fr;gap:8mm;padding:0;margin:0}
+    .ticket{border:2px dashed #666;border-radius:6px;padding:3mm;break-inside:avoid;page-break-inside:avoid}
+    .ticket .t-inner{border:1px solid #bbb;border-radius:4px;padding:6mm 4mm;text-align:center}
+    .ticket .t-top{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#333}
+    .ticket .t-num{font-size:52px;font-weight:800;margin:4mm 0;color:#000}
+    .ticket .t-bottom{font-size:12px;color:#333}
+    .ticket .t-credit{font-size:10px;color:#888;margin-top:3mm}
+    .sheet{max-width:170mm;margin:0 auto;border:2px solid #333;border-radius:8px;padding:12mm;text-align:center}
+    .sheet h1{font-size:30px;margin:0 0 4mm}
+    .sheet-sub{color:#555;margin:0 0 6mm;font-size:14px}
+    .sheet ol{text-align:left;font-size:16px;columns:2;column-gap:14mm;margin:0 auto;max-width:150mm}
+    .sheet ol li{margin:2mm 0}
+    .sheet-note{margin-top:6mm;font-size:14px;color:#333}
+    .sheet-foot{margin-top:8mm;color:#888;font-size:12px}
+    .rulecard{border:2px dashed #666;border-radius:6px;padding:8mm;break-inside:avoid;page-break-inside:avoid}
+    .rulecard .rc-title{font-size:22px;font-weight:800;text-align:center}
+    .rulecard .rc-sub{text-align:center;color:#555;font-size:13px;margin:2mm 0 5mm;text-transform:uppercase;letter-spacing:2px}
+    .rulecard ol{font-size:14px;margin:0;padding-left:18px}
+    .rulecard ol li{margin:3mm 0}
+    .rulecard .rc-foot{margin-top:6mm;text-align:center;font-size:12px;color:#777}
+  }
+  @page{size:A4;margin:10mm}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎄 Новогодняя лотерея</h1>
+  <p>Комплект ведущего: печать билетов, честный жребий, розыгрыш с выпадением номеров</p>
+</header>
+<main>
+  <section class="panel">
+    <h2>1 · Билеты для гостей</h2>
+    <p class="muted">Билеты с номерами от 1 до N. Распечатайте, нарежьте по пунктиру и раздайте гостям — по билету каждому.</p>
+    <div class="row">
+      <label>Сколько билетов: <input id="ticketCount" type="number" min="2" max="100" step="1" value="24"></label>
+      <button id="printBtn" class="btn">🖨 Распечатать билеты</button>
+    </div>
+    <p class="hint">В окне печати выберите А4 и книжную ориентацию. Совет: плотная бумага (160–200 г/м²) держит форму и приятнее на ощупь.</p>
+  </section>
+
+  <section class="panel">
+    <h2>2 · Призы и жребий</h2>
+    <p class="muted">Впишите призы — каждый с новой строки. Если призов меньше, чем билетов, остальным номерам достанутся «Призы-сюрпризы».</p>
+    <textarea id="prizeList" placeholder="Сертификат в кино&#10;Набор для глинтвейна&#10;Свеча с ароматом мандаринов&#10;..."></textarea>
+    <div class="row">
+      <button id="sealBtn" class="btn gold">🔒 Запечатать жребий</button>
+      <span id="sealInfo" class="muted"></span>
+    </div>
+    <p id="sealNote" class="hint"></p>
+  </section>
+
+  <section class="panel">
+    <h2>3 · Розыгрыш</h2>
+    <p class="muted">Номера выпадают случайно из ещё не выпавших. История и отпечаток сохраняются — можно обновить страницу без потерь.</p>
+    <div class="drum">
+      <div id="drumNum">—</div>
+      <button id="spinBtn" class="btn big gold" disabled>🎲 Крутить барабан</button>
+    </div>
+    <div id="revealBox" class="reveal"></div>
+    <p id="stats" class="muted"></p>
+    <h3>Выпавшие номера</h3>
+    <div id="numbersGrid" class="grid"></div>
+    <h3>История розыгрыша</h3>
+    <ol id="history"></ol>
+    <div class="row">
+      <button id="verifyBtn" class="btn">✅ Проверить честность</button>
+      <button id="revealAllBtn" class="btn">👀 Открыть всё (финал)</button>
+      <button id="soundBtn" class="btn">🔊 Звук: вкл</button>
+      <button id="fsBtn" class="btn">⛶ Во весь экран</button>
+      <button id="resetBtn" class="btn danger">Сбросить</button>
+    </div>
+    <p id="verifyOut" class="hint"></p>
+  </section>
+
+  <section class="panel">
+    <h2>4 · Дополнительно к печати</h2>
+    <p class="muted">Список призов можно повесить на видное место — гости увидят, что разыгрывается. Правила — разложить на столе у билетов.</p>
+    <div class="row">
+      <button id="printPrizesBtn" class="btn">📜 Список призов</button>
+      <button id="printRulesBtn" class="btn">📖 Правила вечера</button>
+    </div>
+  </section>
+</main>
+<footer>Новогодняя лотерея · комплект ведущего · «Все для праздника»</footer>
+<section id="printRoot" aria-hidden="true"></section>
+
+<script>
+(function(){
+  "use strict";
+  var LS_KEY = "vsesprazdnikom_lottery_v1";
+  var LEGACY_KEY = "***";
+  function $(id){ return document.getElementById(id); }
+
+  function defaultState(){
+    return { tickets:24, prizes:[], mapping:[], drawn:[], sealed:false, seal:"", sound:true };
+  }
+  var state = defaultState();
+
+  function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+  function load(){
+    try{
+      var raw = localStorage.getItem(LS_KEY);
+      if(!raw){ raw = localStorage.getItem(LEGACY_KEY); }
+      if(raw){
+        var s = JSON.parse(raw);
+        if(s && typeof s === "object" && s.mapping){ state = s; }
+      }
+    }catch(e){ state = defaultState(); }
+    if(typeof state.sound !== "boolean"){ state.sound = true; }
+  }
+
+  function hashStr(s){
+    var h = 5381;
+    for(var i=0;i<s.length;i++){ h = (((h<<5)+h) + s.charCodeAt(i)) | 0; }
+    var x = (h>>>0).toString(36).toUpperCase();
+    while(x.length<6){ x = x + "0"; }
+    return x.slice(0,6);
+  }
+
+  function shuffle(a){
+    for(var i=a.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function clampTickets(v){
+    v = parseInt(v,10); if(isNaN(v)) v = 24; if(v<2) v = 2; if(v>100) v = 100; return v;
+  }
+
+  function parsePrizes(){
+    var lines = $("prizeList").value.split("\n");
+    var out = [];
+    for(var i=0;i<lines.length;i++){ var t = lines[i].trim(); if(t) out.push(t); }
+    return out;
+  }
+
+  function buildMapping(prizes, n){
+    var arr = prizes.slice(0, n);
+    while(arr.length < n){ arr.push("Приз-сюрприз 🎁"); }
+    return shuffle(arr);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  /* Наряд: падающий снег (только экран) */
+  function initSnow(){
+    try{
+      if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){ return; }
+      var c = document.createElement("canvas");
+      c.id = "snowCanvas";
+      document.body.appendChild(c);
+      var ctx = c.getContext("2d");
+      function resize(){ c.width = window.innerWidth; c.height = window.innerHeight; }
+      window.addEventListener("resize", resize);
+      resize();
+      var flakes = [];
+      for(var i=0;i<28;i++){
+        flakes.push({ x:Math.random()*c.width, y:Math.random()*c.height,
+          r:0.8+Math.random()*2.0, s:0.25+Math.random()*0.55, d:Math.random()*6.283 });
+      }
+      function step(){
+        ctx.clearRect(0,0,c.width,c.height);
+        ctx.fillStyle = "rgba(255,255,255,.5)";
+        for(var i=0;i<flakes.length;i++){
+          var f = flakes[i];
+          f.y += f.s; f.d += 0.012; f.x += Math.sin(f.d)*0.35;
+          if(f.y > c.height+6){ f.y = -6; f.x = Math.random()*c.width; }
+          ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.283); ctx.fill();
+        }
+        requestAnimationFrame(step);
+      }
+      step();
+    }catch(e){}
+  }
+
+  /* Наряд: конфетти при выпадении приза */
+  var fx = { canvas:null, parts:[], raf:0, stopT:0 };
+  function confettiBurst(){
+    try{
+      if(!fx.canvas){ fx.canvas = document.createElement("canvas"); fx.canvas.id = "fxCanvas"; document.body.appendChild(fx.canvas); }
+      var c = fx.canvas;
+      c.width = window.innerWidth; c.height = window.innerHeight;
+      var colors = ["#f6c65b","#41d1a7","#ff6b6b","#7fb2ff","#ffffff","#ffb1f2"];
+      fx.parts = [];
+      for(var i=0;i<140;i++){
+        fx.parts.push({ x:Math.random()*c.width, y:-30-Math.random()*c.height*0.4,
+          vx:(Math.random()-0.5)*1.6, vy:1.8+Math.random()*3.0,
+          w:5+Math.random()*6, h:8+Math.random()*8,
+          rot:Math.random()*6.283, vr:(Math.random()-0.5)*0.25,
+          col:colors[Math.floor(Math.random()*colors.length)] });
+      }
+      if(!fx.raf){ fx.raf = requestAnimationFrame(fxStep); }
+      clearTimeout(fx.stopT);
+      fx.stopT = setTimeout(fxStop, 5000);
+    }catch(e){}
+  }
+  function fxStep(){
+    var c = fx.canvas; if(!c){ return; }
+    var ctx = c.getContext("2d");
+    ctx.clearRect(0,0,c.width,c.height);
+    var alive = 0;
+    for(var i=0;i<fx.parts.length;i++){
+      var p = fx.parts[i];
+      p.y += p.vy; p.x += p.vx; p.rot += p.vr;
+      if(p.y < c.height+30){
+        alive++;
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.col; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+      }
+    }
+    if(alive>0){ fx.raf = requestAnimationFrame(fxStep); } else { fxStop(); }
+  }
+  function fxStop(){
+    if(fx.raf){ cancelAnimationFrame(fx.raf); fx.raf = 0; }
+    if(fx.canvas){
+      try{ var ctx = fx.canvas.getContext("2d"); if(ctx){ ctx.clearRect(0,0,fx.canvas.width,fx.canvas.height); } }catch(e){}
+    }
+  }
+
+  /* Звук: щелчки барабана и фанфара */
+  var actx = null;
+  function audioCtx(){
+    if(!state.sound){ return null; }
+    try{
+      if(!actx){
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if(!AC){ return null; }
+        actx = new AC();
+      }
+      if(actx.state === "suspended" && actx.resume){ actx.resume(); }
+      return actx;
+    }catch(e){ return null; }
+  }
+  function tickSound(){
+    var a = audioCtx(); if(!a){ return; }
+    try{
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = "square"; o.frequency.value = 900;
+      var t = a.currentTime;
+      g.gain.setValueAtTime(0.015, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+0.05);
+      o.connect(g); g.connect(a.destination);
+      o.start(t); o.stop(t+0.06);
+    }catch(e){}
+  }
+  function winSound(){
+    var a = audioCtx(); if(!a){ return; }
+    try{
+      var notes = [523.25, 659.25, 783.99, 1046.5];
+      for(var i=0;i<notes.length;i++){
+        var o = a.createOscillator(), g = a.createGain();
+        o.type = "triangle"; o.frequency.value = notes[i];
+        var t = a.currentTime + i*0.09;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.10, t+0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.5);
+        o.connect(g); g.connect(a.destination);
+        o.start(t); o.stop(t+0.55);
+      }
+    }catch(e){}
+  }
+
+  /* Печать: билеты, список призов, правила */
+  var printMode = "tickets";
+  function renderTickets(root){
+    for(var i=1;i<=state.tickets;i++){
+      var t = document.createElement("div");
+      t.className = "ticket";
+      t.innerHTML = '<div class="t-inner">' +
+        '<div class="t-top">❄ Новогодняя лотерея ❄</div>' +
+        '<div class="t-num">' + i + '</div>' +
+        '<div class="t-bottom">счастливый номер</div>' +
+        '<div class="t-credit">Все для праздника</div>' +
+        '</div>';
+      root.appendChild(t);
+    }
+  }
+  function renderPrizeSheet(root){
+    var prizes = state.sealed ? state.prizes : parsePrizes();
+    var n = state.sealed ? state.tickets : clampTickets($("ticketCount").value);
+    var list = prizes.slice(0, n);
+    var html = '<h1>🎄 Призы новогодней лотереи</h1>' +
+      '<p class="sheet-sub">Билетов: ' + n + ' · у каждого номера — свой приз</p>';
+    if(list.length){
+      html += '<ol>';
+      for(var i=0;i<list.length;i++){ html += '<li>' + escapeHtml(list[i]) + '</li>'; }
+      html += '</ol>';
+    } else {
+      html += '<p class="sheet-sub">Список пока пуст — впишите призы в разделе 2 и напечатайте ещё раз.</p>';
+    }
+    var pad = n - list.length;
+    if(pad > 0){ html += '<p class="sheet-note">🎁 А для остальных номеров — призы-сюрпризы (' + pad + ' шт.)</p>'; }
+    html += '<p class="sheet-foot">Все для праздника</p>';
+    var sheet = document.createElement("div");
+    sheet.className = "sheet";
+    sheet.innerHTML = html;
+    root.appendChild(sheet);
+  }
+  function renderRules(root){
+    for(var k=0;k<2;k++){
+      var card = document.createElement("div");
+      card.className = "rulecard";
+      card.innerHTML = '<div class="rc-title">🎄 Новогодняя лотерея</div>' +
+        '<div class="rc-sub">как играть</div>' +
+        '<ol>' +
+        '<li>Каждый гость получает билет со счастливым номером.</li>' +
+        '<li>Жребий запечатан заранее: никто не знает, что под каким номером.</li>' +
+        '<li>Ведущий крутит барабан — номер выпадает случайно из ещё не выпавших.</li>' +
+        '<li>Твой номер выпал — забирай приз, который под ним спрятан.</li>' +
+        '<li>В конце вечера можно проверить отпечаток честности.</li>' +
+        '</ol>' +
+        '<div class="rc-foot">Приятного праздника! ❄ Все для праздника</div>';
+      root.appendChild(card);
+    }
+  }
+  function renderPrint(){
+    var root = $("printRoot");
+    root.innerHTML = "";
+    root.className = "";
+    if(printMode === "prizes"){ root.className = "mode-prizes"; renderPrizeSheet(root); }
+    else if(printMode === "rules"){ root.className = "mode-rules"; renderRules(root); }
+    else { root.className = "mode-tickets"; renderTickets(root); }
+  }
+
+  function renderNumbers(){
+    var g = $("numbersGrid");
+    g.innerHTML = "";
+    for(var i=1;i<=state.tickets;i++){
+      var d = document.createElement("div");
+      d.className = "chip" + (state.drawn.indexOf(i)>=0 ? " drawn" : "");
+      d.textContent = i;
+      g.appendChild(d);
+    }
+  }
+
+  function renderHistory(){
+    var h = $("history");
+    h.innerHTML = "";
+    for(var i=0;i<state.drawn.length;i++){
+      var n = state.drawn[i];
+      var li = document.createElement("li");
+      li.innerHTML = "№ " + n + " — <b>" + escapeHtml(state.mapping[n-1] || "") + "</b>";
+      h.appendChild(li);
+    }
+  }
+
+  function render(){
+    $("ticketCount").value = state.tickets;
+    $("ticketCount").disabled = state.sealed;
+    $("sealBtn").disabled = state.sealed;
+    $("prizeList").disabled = state.sealed;
+    if(state.sealed){
+      $("sealInfo").textContent = "Билетов: " + state.tickets + " · Отпечаток: " + state.seal;
+      $("sealNote").textContent = "Жребий запечатан: расклад создан случайным перемешиванием и зафиксирован отпечатком. Что под каким номером — не видно никому до выпадения. В конце вечера нажмите «Проверить честность».";
+    } else {
+      $("sealInfo").textContent = "";
+      $("sealNote").textContent = "";
+    }
+    $("soundBtn").textContent = state.sound ? "🔊 Звук: вкл" : "🔇 Звук: выкл";
+    var left = state.tickets - state.drawn.length;
+    $("stats").textContent = state.sealed ? ("Осталось номеров: " + left) : "Сначала запечатайте жребий во втором шаге.";
+    $("spinBtn").disabled = !state.sealed || left<=0;
+    $("revealAllBtn").disabled = !state.sealed || left<=0;
+    $("verifyBtn").disabled = !state.sealed;
+    if(left<=0 && state.sealed){ $("drumNum").textContent = "★"; }
+    renderPrint();
+    renderNumbers();
+    renderHistory();
+  }
+
+  $("ticketCount").addEventListener("input", function(){
+    if(!state.sealed){
+      state.tickets = clampTickets($("ticketCount").value);
+      save();
+      render();
+    }
+  });
+
+  $("printBtn").addEventListener("click", function(){
+    if(!state.sealed){
+      state.tickets = clampTickets($("ticketCount").value);
+      save();
+    }
+    printMode = "tickets";
+    render();
+    window.print();
+  });
+
+  $("printPrizesBtn").addEventListener("click", function(){
+    if(!state.sealed && parsePrizes().length === 0){ alert("Сначала впишите призы — их и напечатаем."); return; }
+    printMode = "prizes";
+    renderPrint();
+    window.print();
+  });
+
+  $("printRulesBtn").addEventListener("click", function(){
+    printMode = "rules";
+    renderPrint();
+    window.print();
+  });
+
+  $("sealBtn").addEventListener("click", function(){
+    var n = clampTickets($("ticketCount").value);
+    var prizes = parsePrizes();
+    if(prizes.length === 0){ alert("Сначала впишите хотя бы один приз."); return; }
+    if(prizes.length > n && !confirm("Призов больше, чем билетов (" + prizes.length + " > " + n + "). Лишние не попадут в игру. Продолжить?")){ return; }
+    state.tickets = n;
+    state.prizes = prizes;
+    state.mapping = buildMapping(prizes, n);
+    state.drawn = [];
+    state.seal = hashStr(state.mapping.join("|"));
+    state.sealed = true;
+    save();
+    render();
+  });
+
+  var spinning = false;
+  $("spinBtn").addEventListener("click", function(){
+    if(spinning){ return; }
+    spinning = true;
+    $("spinBtn").disabled = true;
+    $("revealBox").className = "reveal";
+    $("revealBox").innerHTML = "";
+    var pool = [];
+    for(var i=1;i<=state.tickets;i++){ if(state.drawn.indexOf(i)<0){ pool.push(i); } }
+    if(pool.length === 0){ spinning = false; render(); return; }
+    var n = pool[Math.floor(Math.random()*pool.length)];
+    var ticks = 0;
+    var maxTicks = 28 + Math.floor(Math.random()*10);
+    var timer = setInterval(function(){
+      ticks++;
+      $("drumNum").textContent = 1 + Math.floor(Math.random()*state.tickets);
+      if(ticks % 2 === 0){ tickSound(); }
+      if(ticks >= maxTicks){
+        clearInterval(timer);
+        state.drawn.push(n);
+        save();
+        $("drumNum").textContent = "№ " + n;
+        var box = $("revealBox");
+        box.className = "reveal show";
+        box.innerHTML = 'Номер <b>' + n + '</b> выигрывает: <span class="prize">' + escapeHtml(state.mapping[n-1] || "") + '</span>';
+        confettiBurst();
+        winSound();
+        spinning = false;
+        render();
+      }
+    }, 70);
+  });
+
+  $("verifyBtn").addEventListener("click", function(){
+    if(!state.sealed){ return; }
+    var h = hashStr(state.mapping.join("|"));
+    var out = $("verifyOut");
+    if(h === state.seal){
+      out.className = "hint okmsg";
+      out.textContent = "✅ Отпечаток совпадает: " + h + ". Расклад — тот самый, что запечатали.";
+    } else {
+      out.className = "hint badmsg";
+      out.textContent = "⚠️ Отпечаток не совпал! Кто-то изменил расклад после запечатывания.";
+    }
+  });
+
+  $("revealAllBtn").addEventListener("click", function(){
+    if(!state.sealed){ return; }
+    if(state.drawn.length >= state.tickets){ return; }
+    if(!confirm("Открыть все оставшиеся призы сразу? Обычно это финальный аккорд вечера.")){ return; }
+    state.drawn = [];
+    for(var i=1;i<=state.tickets;i++){ state.drawn.push(i); }
+    save();
+    render();
+    var box = $("revealBox");
+    box.className = "reveal show";
+    box.innerHTML = "Все призы открыты. Отпечаток для проверки: <b>" + state.seal + "</b>";
+    $("drumNum").textContent = "★";
+  });
+
+  $("soundBtn").addEventListener("click", function(){
+    state.sound = !state.sound;
+    save();
+    render();
+    if(state.sound){ tickSound(); }
+  });
+
+  $("fsBtn").addEventListener("click", function(){
+    try{
+      if(!document.fullscreenElement && document.documentElement.requestFullscreen){
+        document.documentElement.requestFullscreen();
+      } else if(document.exitFullscreen){
+        document.exitFullscreen();
+      }
+    }catch(e){}
+  });
+
+  $("resetBtn").addEventListener("click", function(){
+    if(!confirm("Сбросить всё: призы, жребий и историю? Отменить нельзя.")){ return; }
+    state = defaultState();
+    try{ localStorage.removeItem(LS_KEY); }catch(e){}
+    $("prizeList").value = "";
+    $("revealBox").className = "reveal";
+    $("revealBox").innerHTML = "";
+    $("verifyOut").textContent = "";
+    $("verifyOut").className = "hint";
+    $("drumNum").textContent = "—";
+    printMode = "tickets";
+    render();
+  });
+
+  window.addEventListener("afterprint", function(){ printMode = "tickets"; render(); });
+
+  load();
+  $("prizeList").value = (state.prizes || []).join("\n");
+  render();
+  initSnow();
+})();
+</script>
+</body>
+</html>
